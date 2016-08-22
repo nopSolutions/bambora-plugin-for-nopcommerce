@@ -1,8 +1,9 @@
 ﻿Group: Payment methods
 FriendlyName: Beanstream
 SystemName: Payments.Beanstream
-Version: 1.00
-SupportedVersions: 3.70
+Version: 1.10
+SupportedVersions: 3.80
 Author: nopCommerce team
 DisplayOrder: 1
 FileName: Nop.Plugin.Payments.Beanstream.dll
+Description: This plugin allows paying with Beanstream

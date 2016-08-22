@@ -6,7 +6,6 @@ using System.Text;
 using System.Web;
 using System.Web.Routing;
 using Nop.Core.Domain.Orders;
-using Nop.Core.Domain.Payments;
 using Nop.Core.Plugins;
 using Nop.Plugin.Payments.Beanstream.Controllers;
 using Nop.Services.Configuration;
@@ -24,21 +23,23 @@ namespace Nop.Plugin.Payments.Beanstream
         #region Fields
 
         private readonly BeanstreamPaymentSettings _beanstreamPaymentSettings;
-        private readonly ISettingService _settingService;
-        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
         private readonly HttpContextBase _httpContext;
+        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
+        private readonly ISettingService _settingService;
+
         #endregion
 
         #region Ctor
 
         public BeanstreamPaymentProcessor(BeanstreamPaymentSettings beanstreamPaymentSettings,
-            ISettingService settingService, IOrderTotalCalculationService orderTotalCalculationService, 
-            HttpContextBase httpContext)
+            HttpContextBase httpContext,
+            IOrderTotalCalculationService orderTotalCalculationService,
+            ISettingService settingService)
         {
             this._beanstreamPaymentSettings = beanstreamPaymentSettings;
-            this._settingService = settingService;
-            this._orderTotalCalculationService = orderTotalCalculationService;
             this._httpContext = httpContext;
+            this._orderTotalCalculationService = orderTotalCalculationService;
+            this._settingService = settingService;
         }
 
         #endregion
@@ -46,14 +47,32 @@ namespace Nop.Plugin.Payments.Beanstream
         #region Utilities
 
         /// <summary>
-        /// Gets Beanstream URL
+        /// Get Beanstream URL
         /// </summary>
-        /// <returns></returns>
-        private string GetBeanstreamUrl()
+        /// <returns>URL</returns>
+        protected string GetBeanstreamUrl()
         {
             return "https://www.beanstream.com/scripts/payment/payment.asp";
         }
 
+        /// <summary>
+        /// Claculates MD5 hash
+        /// </summary>
+        /// <param name="input">Input string for the encoding</param>
+        /// <returns>MD5 hash</returns>
+        protected string CalculateMD5hash(string input)
+        {
+            var md5Hasher = new MD5CryptoServiceProvider();
+            var hash = md5Hasher.ComputeHash(Encoding.Default.GetBytes(input));
+
+            var output = new StringBuilder();
+            foreach (var character in hash)
+            {
+                output.Append(character.ToString("x2"));
+            }
+
+            return output.ToString();
+        }
         #endregion
 
         #region Methods
@@ -65,8 +84,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// <returns>Process payment result</returns>
         public ProcessPaymentResult ProcessPayment(ProcessPaymentRequest processPaymentRequest)
         {
-            var result = new ProcessPaymentResult {NewPaymentStatus = PaymentStatus.Pending};
-            return result;
+            return new ProcessPaymentResult();
         }
 
         /// <summary>
@@ -78,14 +96,7 @@ namespace Nop.Plugin.Payments.Beanstream
             var builder = new StringBuilder();
 
             //common
-            string merchantId = "";
-            if (_beanstreamPaymentSettings.CurrencyId == (int) CurrencyEnum.CanadianDollars)
-                merchantId = _beanstreamPaymentSettings.CanadianMerchantId;
-            if (_beanstreamPaymentSettings.CurrencyId == (int) CurrencyEnum.USDollars)
-                merchantId = _beanstreamPaymentSettings.USMerchantId;
-
-            builder.AppendFormat("merchant_id={0}", HttpUtility.UrlEncode(merchantId));
-            builder.AppendFormat("&trnType={0}", "P");
+            builder.AppendFormat("merchant_id={0}", HttpUtility.UrlEncode(_beanstreamPaymentSettings.MerchantId));
 
             //pass order
             builder.AppendFormat("&trnOrderNumber={0}", postProcessPaymentRequest.Order.Id);
@@ -93,45 +104,28 @@ namespace Nop.Plugin.Payments.Beanstream
             builder.AppendFormat("&trnAmount={0}", orderTotal.ToString("0.00", CultureInfo.InvariantCulture));
 
             //address
-            var name = postProcessPaymentRequest.Order.BillingAddress.FirstName + " " +
-                       postProcessPaymentRequest.Order.BillingAddress.LastName;
-            builder.AppendFormat("&ordName={0}", HttpUtility.UrlEncode(name));
-            builder.AppendFormat("&ordEmailAddress={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Email));
-            builder.AppendFormat("&ordPhoneNumber={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.PhoneNumber));
-            builder.AppendFormat("&ordAddress1={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Address1));
-            builder.AppendFormat("&ordAddress2={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Address2));
-            builder.AppendFormat("&ordCity={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.City));
-            builder.AppendFormat("&ordProvince={0}",
-                postProcessPaymentRequest.Order.BillingAddress.StateProvince != null
-                    ? HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.StateProvince.Abbreviation)
-                    : "");
-            builder.AppendFormat("&ordCountry={0}",
-                postProcessPaymentRequest.Order.BillingAddress.Country != null
-                    ? HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Country.TwoLetterIsoCode)
-                    : "");
-            builder.AppendFormat("&ordPostalCode={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.ZipPostalCode));
+            if (postProcessPaymentRequest.Order.BillingAddress != null)
+            {
+                builder.AppendFormat("&ordName={0}", HttpUtility.UrlEncode(string.Format("{0} {1}",
+                    postProcessPaymentRequest.Order.BillingAddress.FirstName, postProcessPaymentRequest.Order.BillingAddress.LastName)));
+                builder.AppendFormat("&ordEmailAddress={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Email));
+                builder.AppendFormat("&ordPhoneNumber={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.PhoneNumber));
+                builder.AppendFormat("&ordAddress1={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Address1));
+                builder.AppendFormat("&ordAddress2={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Address2));
+                builder.AppendFormat("&ordCity={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.City));
+                builder.AppendFormat("&ordProvince={0}", postProcessPaymentRequest.Order.BillingAddress.StateProvince != null ?
+                        HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.StateProvince.Abbreviation) : string.Empty);
+                builder.AppendFormat("&ordCountry={0}", postProcessPaymentRequest.Order.BillingAddress.Country != null ?
+                        HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Country.TwoLetterIsoCode) : string.Empty);
+                builder.AppendFormat("&ordPostalCode={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.ZipPostalCode));
+            }
 
-            //Creating hash value
-            //hash generation rules are here: 
-            //http://developer.beanstream.com/wp-content/uploads/sites/2/2013/09/BEAN_API_Integration.pdf (page 60)
-            var stringToHash = new StringBuilder();
-            stringToHash.Append(builder);
-            stringToHash.Append(_beanstreamPaymentSettings.HashValue);
+            //creating hash value
+            var hash = CalculateMD5hash(string.Format("{0}{1}", builder.ToString(), _beanstreamPaymentSettings.HashKey));
+            builder.AppendFormat("&hashValue={0}", hash);
 
-            var md5 = MD5.Create();
-            var inputBytes = Encoding.ASCII.GetBytes(stringToHash.ToString());
-            var hash = md5.ComputeHash(inputBytes);
-
-            builder.Append("&hashValue=");
-            foreach (byte t in hash)
-                builder.Append(t.ToString("X2"));
-
-            var post = new StringBuilder();
-            post.Append(GetBeanstreamUrl());
-            post.Append("?");
-            post.Append(builder);
-
-            _httpContext.Response.Redirect(post.ToString());
+            //post
+            _httpContext.Response.Redirect(string.Format("{0}?{1}", GetBeanstreamUrl(), builder));
         }
 
         /// <summary>
@@ -263,54 +257,56 @@ namespace Nop.Plugin.Payments.Beanstream
             routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.Payments.Beanstream.Controllers" }, { "area", null } };
         }
 
+        /// <summary>
+        /// Get type of the controller
+        /// </summary>
+        /// <returns>Controller type</returns>
         public Type GetControllerType()
         {
             return typeof(PaymentBeanstreamController);
         }
 
+        /// <summary>
+        /// Install the plugin
+        /// </summary>
         public override void Install()
         {
             //settings
-            var settings = new BeanstreamPaymentSettings()
-            {
-                CurrencyId = (int)CurrencyEnum.USDollars
-            };
-            _settingService.SaveSetting(settings);
+            _settingService.SaveSetting(new BeanstreamPaymentSettings());
 
             //locales
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.RedirectionTip", "You will be redirected to Beanstream site to complete the order.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.CurrencyId", "Current currency");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.CurrencyId.Hint", "Current currency.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId", "Merchant Id");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId.Hint", "Merchant Id.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashValue", "Hash value");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashValue.Hint", "Hash value.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFee", "Additional fee");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFee.Hint", "Enter additional fee to charge your customers.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFeePercentage", "Additional fee. Use percentage");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashKey", "Hash key");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashKey.Hint", "Specify hash key.");            
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId", "Merchant Id");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId.Hint", "Specify merchant Id.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.RedirectionTip", "You will be redirected to Beanstream site to complete the order.");
 
             base.Install();
         }
         
+        /// <summary>
+        /// Uninstall the plugin
+        /// </summary>
         public override void Uninstall()
         {
             //settings
             _settingService.DeleteSetting<BeanstreamPaymentSettings>();
 
             //locales
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.RedirectionTip");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.CurrencyId");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.CurrencyId.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashValue");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashValue.Hint");
             this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFee");
             this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFee.Hint");
             this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFeePercentage");
             this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFeePercentage.Hint");
-            
+            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashValue");
+            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashValue.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId");
+            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId.Hint");            
+            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.RedirectionTip");
+
             base.Uninstall();
         }
 
@@ -323,10 +319,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         public bool SupportCapture
         {
-            get
-            {
-                return false;
-            }
+            get { return false; }
         }
 
         /// <summary>
@@ -334,10 +327,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         public bool SupportPartiallyRefund
         {
-            get
-            {
-                return false;
-            }
+            get { return false; }
         }
 
         /// <summary>
@@ -345,10 +335,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         public bool SupportRefund
         {
-            get
-            {
-                return false;
-            }
+            get { return false; }
         }
 
         /// <summary>
@@ -356,10 +343,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         public bool SupportVoid
         {
-            get
-            {
-                return false;
-            }
+            get { return false; }
         }
 
         /// <summary>
@@ -367,10 +351,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         public RecurringPaymentType RecurringPaymentType
         {
-            get
-            {
-                return RecurringPaymentType.NotSupported;
-            }
+            get { return RecurringPaymentType.NotSupported; }
         }
 
         /// <summary>
@@ -378,10 +359,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         public PaymentMethodType PaymentMethodType
         {
-            get
-            {
-                return PaymentMethodType.Redirection;
-            }
+            get { return PaymentMethodType.Redirection; }
         }
 
         /// <summary>
@@ -389,10 +367,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         public bool SkipPaymentInfo
         {
-            get
-            {
-                return false;
-            }
+            get { return false; }
         }
 
         #endregion

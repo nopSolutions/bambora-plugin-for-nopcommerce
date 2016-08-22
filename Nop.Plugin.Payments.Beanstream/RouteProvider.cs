@@ -22,12 +22,10 @@ namespace Nop.Plugin.Payments.Beanstream
                  new[] { "Nop.Plugin.Payments.Beanstream.Controllers" }
             );
         }
+
         public int Priority
         {
-            get
-            {
-                return 0;
-            }
+            get { return 0; }
         }
     }
 }
