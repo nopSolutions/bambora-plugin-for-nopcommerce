@@ -26,6 +26,7 @@ namespace Nop.Plugin.Payments.Beanstream
         private readonly HttpContextBase _httpContext;
         private readonly IOrderTotalCalculationService _orderTotalCalculationService;
         private readonly ISettingService _settingService;
+        private readonly ILocalizationService _localizationService;
 
         #endregion
 
@@ -34,12 +35,14 @@ namespace Nop.Plugin.Payments.Beanstream
         public BeanstreamPaymentProcessor(BeanstreamPaymentSettings beanstreamPaymentSettings,
             HttpContextBase httpContext,
             IOrderTotalCalculationService orderTotalCalculationService,
-            ISettingService settingService)
+            ISettingService settingService,
+            ILocalizationService localizationService)
         {
             this._beanstreamPaymentSettings = beanstreamPaymentSettings;
             this._httpContext = httpContext;
             this._orderTotalCalculationService = orderTotalCalculationService;
             this._settingService = settingService;
+            this._localizationService = localizationService;
         }
 
         #endregion
@@ -121,7 +124,7 @@ namespace Nop.Plugin.Payments.Beanstream
             }
 
             //creating hash value
-            var hash = CalculateMD5hash(string.Format("{0}{1}", builder.ToString(), _beanstreamPaymentSettings.HashKey));
+            var hash = CalculateMD5hash(string.Format("{0}{1}", builder, _beanstreamPaymentSettings.HashKey));
             builder.AppendFormat("&hashValue={0}", hash);
 
             //post
@@ -284,6 +287,7 @@ namespace Nop.Plugin.Payments.Beanstream
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId", "Merchant Id");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId.Hint", "Specify merchant Id.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.RedirectionTip", "You will be redirected to Beanstream site to complete the order.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.PaymentMethodDescription", "You will be redirected to Beanstream site to complete the order.");
 
             base.Install();
         }
@@ -306,6 +310,7 @@ namespace Nop.Plugin.Payments.Beanstream
             this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId");
             this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId.Hint");            
             this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.RedirectionTip");
+            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.PaymentMethodDescription");
 
             base.Uninstall();
         }
@@ -368,6 +373,14 @@ namespace Nop.Plugin.Payments.Beanstream
         public bool SkipPaymentInfo
         {
             get { return false; }
+        }
+
+        /// <summary>
+        /// Gets a payment method description that will be displayed on checkout pages in the public store
+        /// </summary>
+        public string PaymentMethodDescription
+        {
+            get { return _localizationService.GetResource("Plugins.Payments.Beanstream.PaymentMethodDescription"); }
         }
 
         #endregion

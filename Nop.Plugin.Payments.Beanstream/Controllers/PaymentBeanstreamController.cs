@@ -112,7 +112,7 @@ namespace Nop.Plugin.Payments.Beanstream.Controllers
                 model.AdditionalFeePercentage_OverrideForStore = _settingService.SettingExists(beanstreamPaymentSettings, x => x.AdditionalFeePercentage, storeScope);
             }
 
-            return View("~/Plugins/Payments.Beanstream/Views/PaymentBeanstream/Configure.cshtml", model);
+            return View("~/Plugins/Payments.Beanstream/Views/Configure.cshtml", model);
         }
 
         [HttpPost]
@@ -152,7 +152,7 @@ namespace Nop.Plugin.Payments.Beanstream.Controllers
         [ChildActionOnly]
         public ActionResult PaymentInfo()
         {
-            return View("~/Plugins/Payments.Beanstream/Views/PaymentBeanstream/PaymentInfo.cshtml");
+            return View("~/Plugins/Payments.Beanstream/Views/PaymentInfo.cshtml");
         }
 
         [NonAction]
