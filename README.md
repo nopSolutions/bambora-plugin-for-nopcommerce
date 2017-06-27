@@ -1,8 +1,8 @@
-﻿nopCommerce Beanstream plugin
+﻿nopCommerce Bambora plugin (ex Beanstream)
 ===========
 
 nopCommerce site: [http://www.nopcommerce.com](http://www.nopcommerce.com)
 
-Listing on nopCommerce "extensions and themes" catalog: [http://www.nopcommerce.com/p/1504/beanstream-payment-module.aspx](http://www.nopcommerce.com/p/1504/beanstream-payment-module.aspx)
+Listing on nopCommerce "extensions and themes" catalog: [https://www.nopcommerce.com/p/1504/bambora-payment-module-nopcommerce-team.aspx](https://www.nopcommerce.com/p/1504/bambora-payment-module-nopcommerce-team.aspx)
 
-Beanstream site: [http://www.beanstream.com](http://www.beanstream.com)
+Beanstream site: [https://www.bambora.com/](https://www.bambora.com/)
