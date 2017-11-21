@@ -1,48 +1,52 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using System.Web;
-using System.Web.Routing;
+using Microsoft.AspNetCore.Http;
+using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Plugins;
-using Nop.Plugin.Payments.Beanstream.Controllers;
+using Nop.Plugin.Payments.Bambora.Controllers;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
 
-namespace Nop.Plugin.Payments.Beanstream
+namespace Nop.Plugin.Payments.Bambora
 {
     /// <summary>
-    /// Beanstream payment processor
+    /// Bambora payment processor
     /// </summary>
-    public class BeanstreamPaymentProcessor : BasePlugin, IPaymentMethod
+    public class BamboraPaymentProcessor : BasePlugin, IPaymentMethod
     {
         #region Fields
 
-        private readonly BeanstreamPaymentSettings _beanstreamPaymentSettings;
-        private readonly HttpContextBase _httpContext;
+        private readonly BamboraPaymentSettings _bamboraPaymentSettings;
         private readonly IOrderTotalCalculationService _orderTotalCalculationService;
         private readonly ISettingService _settingService;
         private readonly ILocalizationService _localizationService;
+        private readonly IWebHelper _webHelper;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         #endregion
 
         #region Ctor
 
-        public BeanstreamPaymentProcessor(BeanstreamPaymentSettings beanstreamPaymentSettings,
-            HttpContextBase httpContext,
+        public BamboraPaymentProcessor(BamboraPaymentSettings bamboraPaymentSettings,
             IOrderTotalCalculationService orderTotalCalculationService,
             ISettingService settingService,
-            ILocalizationService localizationService)
+            ILocalizationService localizationService,
+            IWebHelper webHelper,
+            IHttpContextAccessor httpContextAccessor)
         {
-            this._beanstreamPaymentSettings = beanstreamPaymentSettings;
-            this._httpContext = httpContext;
+            this._bamboraPaymentSettings = bamboraPaymentSettings;
             this._orderTotalCalculationService = orderTotalCalculationService;
             this._settingService = settingService;
             this._localizationService = localizationService;
+            this._webHelper = webHelper;
+            this._httpContextAccessor = httpContextAccessor;
         }
 
         #endregion
@@ -50,10 +54,10 @@ namespace Nop.Plugin.Payments.Beanstream
         #region Utilities
 
         /// <summary>
-        /// Get Beanstream URL
+        /// Get Bambora URL
         /// </summary>
         /// <returns>URL</returns>
-        protected string GetBeanstreamUrl()
+        protected string GetBamboraUrl()
         {
             return "https://www.beanstream.com/scripts/payment/payment.asp";
         }
@@ -63,7 +67,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         /// <param name="input">Input string for the encoding</param>
         /// <returns>MD5 hash</returns>
-        protected string CalculateMD5hash(string input)
+        protected string CalculateMD5Hash(string input)
         {
             var md5Hasher = new MD5CryptoServiceProvider();
             var hash = md5Hasher.ComputeHash(Encoding.Default.GetBytes(input));
@@ -99,7 +103,7 @@ namespace Nop.Plugin.Payments.Beanstream
             var builder = new StringBuilder();
 
             //common
-            builder.AppendFormat("merchant_id={0}", HttpUtility.UrlEncode(_beanstreamPaymentSettings.MerchantId));
+            builder.AppendFormat("merchant_id={0}", WebUtility.UrlEncode(_bamboraPaymentSettings.MerchantId));
 
             //pass order
             builder.AppendFormat("&trnOrderNumber={0}", postProcessPaymentRequest.Order.Id);
@@ -109,26 +113,25 @@ namespace Nop.Plugin.Payments.Beanstream
             //address
             if (postProcessPaymentRequest.Order.BillingAddress != null)
             {
-                builder.AppendFormat("&ordName={0}", HttpUtility.UrlEncode(string.Format("{0} {1}",
-                    postProcessPaymentRequest.Order.BillingAddress.FirstName, postProcessPaymentRequest.Order.BillingAddress.LastName)));
-                builder.AppendFormat("&ordEmailAddress={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Email));
-                builder.AppendFormat("&ordPhoneNumber={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.PhoneNumber));
-                builder.AppendFormat("&ordAddress1={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Address1));
-                builder.AppendFormat("&ordAddress2={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Address2));
-                builder.AppendFormat("&ordCity={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.City));
+                builder.AppendFormat("&ordName={0}", WebUtility.UrlEncode($"{postProcessPaymentRequest.Order.BillingAddress.FirstName} {postProcessPaymentRequest.Order.BillingAddress.LastName}"));
+                builder.AppendFormat("&ordEmailAddress={0}", WebUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Email));
+                builder.AppendFormat("&ordPhoneNumber={0}", WebUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.PhoneNumber));
+                builder.AppendFormat("&ordAddress1={0}", WebUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Address1));
+                builder.AppendFormat("&ordAddress2={0}", WebUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Address2));
+                builder.AppendFormat("&ordCity={0}", WebUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.City));
                 builder.AppendFormat("&ordProvince={0}", postProcessPaymentRequest.Order.BillingAddress.StateProvince != null ?
-                        HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.StateProvince.Abbreviation) : string.Empty);
+                        WebUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.StateProvince.Abbreviation) : string.Empty);
                 builder.AppendFormat("&ordCountry={0}", postProcessPaymentRequest.Order.BillingAddress.Country != null ?
-                        HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Country.TwoLetterIsoCode) : string.Empty);
-                builder.AppendFormat("&ordPostalCode={0}", HttpUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.ZipPostalCode));
+                        WebUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.Country.TwoLetterIsoCode) : string.Empty);
+                builder.AppendFormat("&ordPostalCode={0}", WebUtility.UrlEncode(postProcessPaymentRequest.Order.BillingAddress.ZipPostalCode));
             }
 
             //creating hash value
-            var hash = CalculateMD5hash(string.Format("{0}{1}", builder, _beanstreamPaymentSettings.HashKey));
+            var hash = CalculateMD5Hash($"{builder}{_bamboraPaymentSettings.HashKey}");
             builder.AppendFormat("&hashValue={0}", hash);
 
             //post
-            _httpContext.Response.Redirect(string.Format("{0}?{1}", GetBeanstreamUrl(), builder));
+            _httpContextAccessor.HttpContext.Response.Redirect($"{GetBamboraUrl()}?{builder}");
         }
 
         /// <summary>
@@ -152,7 +155,7 @@ namespace Nop.Plugin.Payments.Beanstream
         public decimal GetAdditionalHandlingFee(IList<ShoppingCartItem> cart)
         {
             var result = this.CalculateAdditionalFee(_orderTotalCalculationService, cart,
-                _beanstreamPaymentSettings.AdditionalFee, _beanstreamPaymentSettings.AdditionalFeePercentage);
+                _bamboraPaymentSettings.AdditionalFee, _bamboraPaymentSettings.AdditionalFeePercentage);
             return result;
         }
 
@@ -224,7 +227,7 @@ namespace Nop.Plugin.Payments.Beanstream
         public bool CanRePostProcessPayment(Order order)
         {
             if (order == null)
-                throw new ArgumentNullException("order");
+                throw new ArgumentNullException(nameof(order));
             
             //let's ensure that at least 5 seconds passed after order is placed
             //P.S. there's no any particular reason for that. we just do it
@@ -234,30 +237,24 @@ namespace Nop.Plugin.Payments.Beanstream
             return true;
         }
 
-        /// <summary>
-        /// Gets a route for provider configuration
-        /// </summary>
-        /// <param name="actionName">Action name</param>
-        /// <param name="controllerName">Controller name</param>
-        /// <param name="routeValues">Route values</param>
-        public void GetConfigurationRoute(out string actionName, out string controllerName, out RouteValueDictionary routeValues)
+        public override string GetConfigurationPageUrl()
         {
-            actionName = "Configure";
-            controllerName = "PaymentBeanstream";
-            routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.Payments.Beanstream.Controllers" }, { "area", null } };
+            return $"{_webHelper.GetStoreLocation()}Admin/PaymentBambora/Configure";
         }
 
-        /// <summary>
-        /// Gets a route for payment info
-        /// </summary>
-        /// <param name="actionName">Action name</param>
-        /// <param name="controllerName">Controller name</param>
-        /// <param name="routeValues">Route values</param>
-        public void GetPaymentInfoRoute(out string actionName, out string controllerName, out RouteValueDictionary routeValues)
+        public void GetPublicViewComponent(out string viewComponentName)
         {
-            actionName = "PaymentInfo";
-            controllerName = "PaymentBeanstream";
-            routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.Payments.Beanstream.Controllers" }, { "area", null } };
+            viewComponentName = "PaymentBambora";
+        }
+
+        public IList<string> ValidatePaymentForm(IFormCollection form)
+        {
+            return new List<string>();
+        }
+
+        public ProcessPaymentRequest GetPaymentInfo(IFormCollection form)
+        {
+            return new ProcessPaymentRequest();
         }
 
         /// <summary>
@@ -266,7 +263,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// <returns>Controller type</returns>
         public Type GetControllerType()
         {
-            return typeof(PaymentBeanstreamController);
+            return typeof(PaymentBamboraController);
         }
 
         /// <summary>
@@ -275,19 +272,19 @@ namespace Nop.Plugin.Payments.Beanstream
         public override void Install()
         {
             //settings
-            _settingService.SaveSetting(new BeanstreamPaymentSettings());
+            _settingService.SaveSetting(new BamboraPaymentSettings());
 
             //locales
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFee", "Additional fee");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFee.Hint", "Enter additional fee to charge your customers.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFeePercentage", "Additional fee. Use percentage");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashKey", "Hash key");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashKey.Hint", "Specify hash key.");            
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId", "Merchant Id");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId.Hint", "Specify merchant Id.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.Fields.RedirectionTip", "You will be redirected to Beanstream site to complete the order.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Beanstream.PaymentMethodDescription", "You will be redirected to Beanstream site to complete the order.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee", "Additional fee");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee.Hint", "Enter additional fee to charge your customers.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage", "Additional fee. Use percentage");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashKey", "Hash key");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashKey.Hint", "Specify hash key.");            
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId", "Merchant Id");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId.Hint", "Specify merchant Id.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.RedirectionTip", "You will be redirected to Bambora site to complete the order.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.PaymentMethodDescription", "You will be redirected to Bambora site to complete the order.");
 
             base.Install();
         }
@@ -298,19 +295,19 @@ namespace Nop.Plugin.Payments.Beanstream
         public override void Uninstall()
         {
             //settings
-            _settingService.DeleteSetting<BeanstreamPaymentSettings>();
+            _settingService.DeleteSetting<BamboraPaymentSettings>();
 
             //locales
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFee");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFee.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFeePercentage");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.AdditionalFeePercentage.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashValue");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.HashValue.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.MerchantId.Hint");            
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.Fields.RedirectionTip");
-            this.DeletePluginLocaleResource("Plugins.Payments.Beanstream.PaymentMethodDescription");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashValue");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashValue.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId.Hint");            
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.RedirectionTip");
+            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.PaymentMethodDescription");
 
             base.Uninstall();
         }
@@ -380,7 +377,7 @@ namespace Nop.Plugin.Payments.Beanstream
         /// </summary>
         public string PaymentMethodDescription
         {
-            get { return _localizationService.GetResource("Plugins.Payments.Beanstream.PaymentMethodDescription"); }
+            get { return _localizationService.GetResource("Plugins.Payments.Bambora.PaymentMethodDescription"); }
         }
 
         #endregion

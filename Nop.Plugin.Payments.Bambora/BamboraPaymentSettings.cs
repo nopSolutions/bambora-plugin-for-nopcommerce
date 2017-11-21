@@ -1,11 +1,11 @@
 using Nop.Core.Configuration;
 
-namespace Nop.Plugin.Payments.Beanstream
+namespace Nop.Plugin.Payments.Bambora
 {
-    public class BeanstreamPaymentSettings : ISettings
+    public class BamboraPaymentSettings : ISettings
     {
         /// <summary>
-        /// Gets or Beanstream sets merchant ID
+        /// Gets or Bambora sets merchant ID
         /// </summary>
         public string MerchantId { get; set; }
 
