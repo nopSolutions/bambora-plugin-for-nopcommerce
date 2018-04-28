@@ -54,9 +54,9 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
 
         #region Utilities
 
-        private IDictionary<string, string> GetParameters()
+        private IDictionary<string, string> GetParameters(IpnModel model)
         {
-            var requestParams = Request.Form.ToDictionary(pair => pair.Key, pair => pair.Value.ToString());
+            var requestParams = model.Form.ToDictionary(pair => pair.Key, pair => pair.Value.ToString());
             foreach (var keyValuePair in Request.Query.Where(pair=>!requestParams.ContainsKey(pair.Key)))
             {
                 requestParams.Add(keyValuePair.Key, keyValuePair.Value);
@@ -157,9 +157,9 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
             return Configure();
         }
 
-        public ActionResult ResultHandler()
+        public ActionResult ResultHandler(IpnModel model)
         {
-            var parameters = GetParameters();
+            var parameters = GetParameters(model);
             int orderId;
             if (!int.TryParse(parameters["trnOrderNumber"], out orderId))
                 return RedirectToRoute("HomePage");
@@ -187,9 +187,9 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
             return RedirectToRoute("CheckoutCompleted", new { orderId = order.Id });
         }
 
-        public ActionResult ResponseNotificationHandler()
+        public ActionResult ResponseNotificationHandler(IpnModel model)
         {
-            var parameters = GetParameters();
+            var parameters = GetParameters(model);
             int orderId;
             if (!int.TryParse(parameters["trnOrderNumber"], out orderId))
                 return Content("");
