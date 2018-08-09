@@ -26,8 +26,7 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
         private readonly IOrderProcessingService _orderProcessingService;
         private readonly IOrderService _orderService;
         private readonly ISettingService _settingService;
-        private readonly IStoreService _storeService;
-        private readonly IWorkContext _workContext;
+        private readonly IStoreContext _storeContext;
 
         #endregion
 
@@ -38,16 +37,14 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
             IOrderProcessingService orderProcessingService,
             IOrderService orderService,
             ISettingService settingService,
-            IStoreService storeService,
-            IWorkContext workContext)
+            IStoreContext storeContext)
         {
             this._localizationService = localizationService;
             this._logger = logger;
             this._orderProcessingService = orderProcessingService;
             this._orderService = orderService;
             this._settingService = settingService;
-            this._storeService = storeService;
-            this._workContext = workContext;
+            this._storeContext = storeContext;
         }
 
         #endregion
@@ -100,7 +97,7 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
         public ActionResult Configure()
         {
             //load settings for a chosen store scope
-            var storeScope = GetActiveStoreScopeConfiguration(_storeService, _workContext);
+            var storeScope = _storeContext.ActiveStoreScopeConfiguration;
             var bamboraPaymentSettings = _settingService.LoadSetting<BamboraPaymentSettings>(storeScope);
 
             var model = new ConfigurationModel
@@ -132,7 +129,7 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
                 return Configure();
 
             //load settings for a chosen store scope
-            var storeScope = GetActiveStoreScopeConfiguration(_storeService, _workContext);
+            var storeScope = _storeContext.ActiveStoreScopeConfiguration;
             var bamboraPaymentSettings = _settingService.LoadSetting<BamboraPaymentSettings>(storeScope);
 
             //save settings

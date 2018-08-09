@@ -24,29 +24,29 @@ namespace Nop.Plugin.Payments.Bambora
         #region Fields
 
         private readonly BamboraPaymentSettings _bamboraPaymentSettings;
-        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
         private readonly ISettingService _settingService;
         private readonly ILocalizationService _localizationService;
         private readonly IWebHelper _webHelper;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IPaymentService _paymentService;
 
         #endregion
 
         #region Ctor
 
         public BamboraPaymentProcessor(BamboraPaymentSettings bamboraPaymentSettings,
-            IOrderTotalCalculationService orderTotalCalculationService,
             ISettingService settingService,
             ILocalizationService localizationService,
             IWebHelper webHelper,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IPaymentService paymentService)
         {
             this._bamboraPaymentSettings = bamboraPaymentSettings;
-            this._orderTotalCalculationService = orderTotalCalculationService;
             this._settingService = settingService;
             this._localizationService = localizationService;
             this._webHelper = webHelper;
             this._httpContextAccessor = httpContextAccessor;
+            this._paymentService = paymentService;
         }
 
         #endregion
@@ -154,7 +154,7 @@ namespace Nop.Plugin.Payments.Bambora
         /// <returns>Additional handling fee</returns>
         public decimal GetAdditionalHandlingFee(IList<ShoppingCartItem> cart)
         {
-            var result = this.CalculateAdditionalFee(_orderTotalCalculationService, cart,
+            var result = _paymentService.CalculateAdditionalFee(cart,
                 _bamboraPaymentSettings.AdditionalFee, _bamboraPaymentSettings.AdditionalFeePercentage);
             return result;
         }
@@ -242,9 +242,9 @@ namespace Nop.Plugin.Payments.Bambora
             return $"{_webHelper.GetStoreLocation()}Admin/PaymentBambora/Configure";
         }
 
-        public void GetPublicViewComponent(out string viewComponentName)
+        public string GetPublicViewComponentName()
         {
-            viewComponentName = "PaymentBambora";
+            return "PaymentBambora";
         }
 
         public IList<string> ValidatePaymentForm(IFormCollection form)
@@ -275,16 +275,16 @@ namespace Nop.Plugin.Payments.Bambora
             _settingService.SaveSetting(new BamboraPaymentSettings());
 
             //locales
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee", "Additional fee");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee.Hint", "Enter additional fee to charge your customers.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage", "Additional fee. Use percentage");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashKey", "Hash key");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashKey.Hint", "Specify hash key.");            
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId", "Merchant Id");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId.Hint", "Specify merchant Id.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.RedirectionTip", "You will be redirected to Bambora site to complete the order.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.PaymentMethodDescription", "You will be redirected to Bambora site to complete the order.");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee", "Additional fee");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee.Hint", "Enter additional fee to charge your customers.");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage", "Additional fee. Use percentage");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashKey", "Hash key");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashKey.Hint", "Specify hash key.");            
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId", "Merchant Id");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId.Hint", "Specify merchant Id.");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.Fields.RedirectionTip", "You will be redirected to Bambora site to complete the order.");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.Bambora.PaymentMethodDescription", "You will be redirected to Bambora site to complete the order.");
 
             base.Install();
         }
@@ -298,16 +298,16 @@ namespace Nop.Plugin.Payments.Bambora
             _settingService.DeleteSetting<BamboraPaymentSettings>();
 
             //locales
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee");
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage");
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashValue");
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashValue.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId");
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId.Hint");            
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.RedirectionTip");
-            this.DeletePluginLocaleResource("Plugins.Payments.Bambora.PaymentMethodDescription");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFee.Hint");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.AdditionalFeePercentage.Hint");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashValue");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.HashValue.Hint");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.MerchantId.Hint");            
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.Fields.RedirectionTip");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.Bambora.PaymentMethodDescription");
 
             base.Uninstall();
         }
