@@ -9,6 +9,7 @@ using Nop.Plugin.Payments.Bambora.Models;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Orders;
 using Nop.Services.Stores;
 using Nop.Web.Framework;
@@ -27,7 +28,7 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
         private readonly IOrderService _orderService;
         private readonly ISettingService _settingService;
         private readonly IStoreContext _storeContext;
-
+        INotificationService _notificationService;
         #endregion
 
         #region Ctor
@@ -37,7 +38,8 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
             IOrderProcessingService orderProcessingService,
             IOrderService orderService,
             ISettingService settingService,
-            IStoreContext storeContext)
+            IStoreContext storeContext,
+            INotificationService notificationService)
         {
             this._localizationService = localizationService;
             this._logger = logger;
@@ -45,6 +47,7 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
             this._orderService = orderService;
             this._settingService = settingService;
             this._storeContext = storeContext;
+            this._notificationService = notificationService;
         }
 
         #endregion
@@ -53,7 +56,7 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
 
         private IDictionary<string, string> GetParameters(IpnModel model)
         {
-            var requestParams = model.Form.ToDictionary(pair => pair.Key, pair => pair.Value.ToString());
+            var requestParams = model.CustomProperties.ToDictionary(pair => pair.Key, pair => pair.Value.ToString());
             foreach (var keyValuePair in Request.Query.Where(pair=>!requestParams.ContainsKey(pair.Key)))
             {
                 requestParams.Add(keyValuePair.Key, keyValuePair.Value);
@@ -149,7 +152,7 @@ namespace Nop.Plugin.Payments.Bambora.Controllers
             //now clear settings cache
             _settingService.ClearCache();
 
-            SuccessNotification(_localizationService.GetResource("Admin.Plugins.Saved"));
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Plugins.Saved"));
 
             return Configure();
         }
