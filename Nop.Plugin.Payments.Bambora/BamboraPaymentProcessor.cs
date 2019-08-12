@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
@@ -7,7 +7,7 @@ using System.Text;
 using Microsoft.AspNetCore.Http;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
-using Nop.Core.Plugins;
+using Nop.Services.Plugins;
 using Nop.Plugin.Payments.Bambora.Controllers;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
